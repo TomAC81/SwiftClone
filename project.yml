@@ -1,0 +1,44 @@
+# Optional: generates SwiftClone.xcodeproj with XcodeGen (https://github.com/yonaskolb/XcodeGen).
+#   brew install xcodegen && xcodegen
+# Not needed to work in Xcode — opening Package.swift is enough. This file has
+# not been run yet (no Xcode on the machine it was written on).
+name: SwiftClone
+options:
+  bundleIdPrefix: app.swiftclone
+  deploymentTarget:
+    macOS: "27.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  SwiftCloneCore:
+    type: framework
+    platform: macOS
+    sources: [Sources/SwiftCloneCore]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+  SwiftClone:
+    type: application
+    platform: macOS
+    sources: [Sources/SwiftClone]
+    dependencies:
+      - target: SwiftCloneCore
+    info:
+      path: Resources/Info.plist
+    settings:
+      base:
+        SWIFT_VERSION: "5.0"
+        ENABLE_HARDENED_RUNTIME: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.swiftclone.SwiftClone
+  SwiftCloneCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [Tests/SwiftCloneCoreTests]
+    dependencies:
+      - target: SwiftCloneCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES

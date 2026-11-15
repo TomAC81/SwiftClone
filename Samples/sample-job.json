@@ -1,0 +1,19 @@
+[
+  {
+    "id" : "6F1D2C3A-9B4E-4C1A-8E55-0A1B2C3D4E5F",
+    "name" : "Documents to Backup Drive",
+    "sourcePath" : "/Users/example/Documents",
+    "destinationPath" : "/Volumes/Backup/Documents",
+    "mode" : "backup",
+    "verification" : "metadata",
+    "excludedNames" : [".DS_Store", ".Trashes", ".Spotlight-V100", ".fseventsd"],
+    "createdAt" : "2026-11-15T09:00:00Z",
+    "schedule" : {
+      "kind" : "daily",
+      "hour" : 2,
+      "minute" : 0,
+      "weekday" : 1,
+      "runWhenDestinationAppears" : true
+    }
+  }
+]
