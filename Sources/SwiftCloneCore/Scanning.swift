@@ -22,6 +22,7 @@ public struct PosixError: Error, Sendable, Equatable, CustomStringConvertible {
         case ENAMETOOLONG: "The file name or path is too long for the destination."
         case EINVAL: "The destination's format can't store this file (name or type not supported)."
         case EFBIG: "The file is too large for the destination's format."
+        case EXDEV: "It contains a separately mounted volume, which SwiftClone will not delete."
         default: String(cString: strerror(code))
         }
     }
@@ -90,11 +91,15 @@ public enum DirectoryReader {
 
     /// Recursive file count and byte total, for the deletion preview.
     public static func treeStats(_ path: String) -> (files: Int, bytes: Int64) {
-        guard let entries = try? list(path) else { return (0, 0) }
+        var root = stat()
+        guard lstat(path, &root) == 0, let entries = try? list(path) else { return (0, 0) }
         var files = 0
         var bytes: Int64 = 0
         for e in entries {
             if e.kind == .directory {
+                var st = stat()
+                // Don't count into a volume mounted below this folder.
+                guard lstat(path + "/" + e.name, &st) == 0, st.st_dev == root.st_dev else { continue }
                 let sub = treeStats(path + "/" + e.name)
                 files += sub.files; bytes += sub.bytes
             } else {

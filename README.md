@@ -4,8 +4,13 @@ A small native macOS backup utility: pick a source, pick a destination, get a
 fast incremental copy that is safe to interrupt. Independent implementation on
 public macOS APIs.
 
-Status: **0.1 — engine, UI, history, scheduling and verification work; not yet
-tested on real external hardware at scale.** See *Known limitations*.
+> **Early software — keep another backup.** SwiftClone 0.1 has automated
+> tests but has not been proven on real external drives or very large trees.
+> Do not make it your only copy of anything important, and try Mirror mode on
+> disposable data first. It is provided without warranty (see [LICENSE](LICENSE)).
+
+Status: **0.1 — engine, UI, history, scheduling and verification work.** See
+*Known limitations*.
 
 ## Build
 
@@ -64,6 +69,9 @@ POSIX/`copyfile`): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   path and by device/inode, so symlinks can't hide it), missing or read-only
   destination. A missing destination is never created, so an unplugged drive
   can't turn into a folder on your startup disk.
+- It stays on one volume: a disk, network share or disk image mounted
+  *inside* the source is skipped, and one mounted inside the destination is
+  never deleted. Deletion does not follow symbolic links.
 - Free space is checked before anything is written.
 - Files are written under a temporary name and renamed when complete. Cancel,
   crash or power loss leaves the previous version in place; re-running the job
@@ -91,6 +99,8 @@ POSIX/`copyfile`): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **Schedules only fire while the app is open.** There is no background agent.
 - **Files owned by other users / root-only files** are reported as errors, not
   copied. Ownership is preserved only where the current user is allowed to set it.
+- **iCloud / cloud-only files** ("dataless" placeholders) are downloaded when
+  read, which can be slow and use a lot of disk space on the source.
 - **Hard links** are copied as separate files. Sockets, devices and FIFOs are skipped.
 - **Case-sensitive source → case-insensitive destination:** two names
   differing only by case collide; the second overwrites the first.
@@ -111,3 +121,14 @@ POSIX/`copyfile`): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 mirror-mode deletion protection, the engine end-to-end on temporary folders
 (incremental runs, cancel, leftover partial files, unreadable files, full
 disk, checksum verification), scheduling, persistence and restore.
+
+## Reporting problems
+
+Open an issue on GitHub. For anything that could cause data loss, include the
+run log from `~/Library/Logs/SwiftClone/` (check it for file names you would
+rather not share first).
+
+## License
+
+MIT — see [LICENSE](LICENSE). SwiftClone is an independent project and is not
+affiliated with Apple or with any other backup product.

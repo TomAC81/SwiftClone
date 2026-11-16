@@ -4,7 +4,7 @@
 <dict>
     <key>CFBundleName</key><string>SwiftClone</string>
     <key>CFBundleDisplayName</key><string>SwiftClone</string>
-    <key>CFBundleIdentifier</key><string>app.swiftclone.SwiftClone</string>
+    <key>CFBundleIdentifier</key><string>io.github.tomac81.SwiftClone</string>
     <key>CFBundleExecutable</key><string>SwiftClone</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>

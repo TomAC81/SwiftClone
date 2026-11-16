@@ -207,6 +207,18 @@ import Testing
         #expect(run.deletionsNotApproved == 1)
     }
 
+    @Test func deletingAFolderDoesNotFollowSymlinksOutOfTheDestination() async throws {
+        let s = try Sandbox()
+        try s.write("src/keep.txt")
+        try s.write("outside/important.txt", "must survive")
+        try FileManager.default.createDirectory(atPath: s.dst + "/old", withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(atPath: s.dst + "/old/link", withDestinationPath: s.root + "/outside")
+        let run = await BackupEngine(job: s.job(mode: .mirror)).run(approval: DeletionApproval(paths: ["old"]))
+        #expect(run.itemsDeleted == 1)
+        #expect(!s.exists("dst/old"))
+        #expect(s.read("outside/important.txt") == "must survive")
+    }
+
     @Test func partialApprovalIsHonouredExactly() async throws {
         let s = try await populated()
         _ = await BackupEngine(job: s.job(mode: .mirror)).run(approval: DeletionApproval(paths: ["extra.txt"]))

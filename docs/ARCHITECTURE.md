@@ -94,6 +94,15 @@ directory. If the root disappears or changes device, the run stops with a
 "destination disconnected" failure. `ENOSPC` stops the run with "destination
 full".
 
+### Mount points and symlinks
+
+Symlinks are copied as links and never followed, on either side. The walk
+compares each source folder's device id with the source root's and skips
+folders that are other volumes. Deletion uses its own recursive remove
+(`removeTree`) that refuses to leave the destination's device, because
+`FileManager.removeItem` would continue into a volume mounted below the
+folder being deleted.
+
 ### Concurrency
 
 Copies within a directory run in parallel with a limit chosen by

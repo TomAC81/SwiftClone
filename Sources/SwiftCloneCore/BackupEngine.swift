@@ -113,6 +113,7 @@ public struct BackupEngine: Sendable {
         let excluded: Set<String>
         let tolerance: Int64
         let destinationDevice: dev_t
+        let sourceDevice: dev_t
         let state: RunState
         let control: RunControl
         let logger: RunLogger?
@@ -126,11 +127,13 @@ public struct BackupEngine: Sendable {
         let destination = PathValidator.resolved(job.destinationPath)
         var st = stat()
         guard stat(destination, &st) == 0 else { throw EngineError.destinationUnavailable }
+        var sourceStat = stat()
+        guard stat(source, &sourceStat) == 0 else { throw EngineError.validation(.sourceMissing) }
         let fsType = VolumeInfo(path: destination)?.filesystemType ?? ""
         return Context(source: source, destination: destination, dryRun: dryRun,
                        approved: approval?.paths ?? [], excluded: Set(job.excludedNames),
                        tolerance: ChangeDetector.mtimeTolerance(forFilesystem: fsType),
-                       destinationDevice: st.st_dev, state: state, control: control, logger: logger)
+                       destinationDevice: st.st_dev, sourceDevice: sourceStat.st_dev, state: state, control: control, logger: logger)
     }
 
     /// Dry run: works out what a backup would do without writing anything.
@@ -269,6 +272,18 @@ public struct BackupEngine: Sendable {
         let srcDir = rel.isEmpty ? c.source : c.source + "/" + rel
         let dstDir = rel.isEmpty ? c.destination : c.destination + "/" + rel
 
+        // Stay on the source's own volume. A folder that is a mount point
+        // (another disk, a network share, a disk image) is not descended
+        // into: backing up "everything mounted below here" is never what a
+        // folder backup means, and one of those mounts could be the destination.
+        if !rel.isEmpty {
+            var st = stat()
+            if stat(srcDir, &st) == 0 && st.st_dev != c.sourceDevice {
+                c.logger?.log(.info, "Skipped \(rel): it is a different volume mounted inside the source")
+                return
+            }
+        }
+
         let sourceEntries: [FileEntry]
         do {
             sourceEntries = try DirectoryReader.list(srcDir)
@@ -351,6 +366,17 @@ public struct BackupEngine: Sendable {
     @discardableResult
     private func handleDeletion(_ d: FileEntry, rel: String, replacing: Bool, _ c: Context) -> Bool {
         let path = c.destination + "/" + rel
+        // Never delete across a mount point: a volume mounted inside the
+        // destination is not part of this backup.
+        if d.kind == .directory {
+            var st = stat()
+            if lstat(path, &st) != 0 || st.st_dev != c.destinationDevice {
+                if !c.dryRun {
+                    c.state.recordError(path: rel, message: "This folder is a separate volume mounted inside the destination. It was left untouched.")
+                }
+                return false
+            }
+        }
         if c.dryRun {
             let stats = d.kind == .directory ? DirectoryReader.treeStats(path) : (files: 1, bytes: d.size)
             c.state.addCandidate(DeletionCandidate(path: rel, isDirectory: d.kind == .directory,
@@ -364,15 +390,36 @@ public struct BackupEngine: Sendable {
             return false
         }
         do {
-            try FileManager.default.removeItem(atPath: path)
+            try Self.removeTree(path, kind: d.kind, device: c.destinationDevice)
             c.state.deleted()
             c.logger?.log(.delete, rel)
             return true
         } catch {
-            c.state.recordError(path: rel, message: "Couldn't delete: \(error.localizedDescription)")
-            c.logger?.log(.error, "Delete failed for \(rel): \(error.localizedDescription)")
+            let why = (error as? PosixError)?.userMessage ?? error.localizedDescription
+            c.state.recordError(path: rel, message: "Couldn't delete: \(why)")
+            c.logger?.log(.error, "Delete failed for \(rel): \(error)")
             return false
         }
+    }
+
+    /// Recursive delete that never follows symlinks and never leaves
+    /// `device`. FileManager.removeItem would happily continue into a volume
+    /// mounted somewhere below `path`.
+    static func removeTree(_ path: String, kind: EntryKind, device: dev_t) throws {
+        guard kind == .directory else {
+            if unlink(path) != 0 && errno != ENOENT { throw PosixError(operation: "Deleting", path: path) }
+            return
+        }
+        var st = stat()
+        guard lstat(path, &st) == 0 else {
+            if errno == ENOENT { return }
+            throw PosixError(operation: "Deleting", path: path)
+        }
+        guard st.st_dev == device else { throw PosixError(code: EXDEV, operation: "Deleting", path: path) }
+        for entry in try DirectoryReader.list(path) {
+            try removeTree(path + "/" + entry.name, kind: entry.kind, device: device)
+        }
+        if rmdir(path) != 0 && errno != ENOENT { throw PosixError(operation: "Deleting", path: path) }
     }
 
     /// Copies a directory's files with a bounded number in flight.

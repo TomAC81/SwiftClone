@@ -17,8 +17,8 @@ import Testing
     }
 
     @Test func caseAndDotDotAreNormalised() {
-        #expect(PathValidator.relation("/Users/Tom/Docs", "/users/tom/docs/sub") == .firstContainsSecond)
-        #expect(PathValidator.relation("/Users/Tom/Docs", "/users/tom/docs", caseInsensitive: false) == .disjoint)
+        #expect(PathValidator.relation("/Users/Sam/Docs", "/users/sam/docs/sub") == .firstContainsSecond)
+        #expect(PathValidator.relation("/Users/Sam/Docs", "/users/sam/docs", caseInsensitive: false) == .disjoint)
         #expect(PathValidator.relation("/a/b/../c", "/a/c") == .same)
     }
 

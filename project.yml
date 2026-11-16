@@ -4,7 +4,7 @@
 # not been run yet (no Xcode on the machine it was written on).
 name: SwiftClone
 options:
-  bundleIdPrefix: app.swiftclone
+  bundleIdPrefix: io.github.tomac81
   deploymentTarget:
     macOS: "27.0"
 settings:
@@ -32,7 +32,7 @@ targets:
       base:
         SWIFT_VERSION: "5.0"
         ENABLE_HARDENED_RUNTIME: YES
-        PRODUCT_BUNDLE_IDENTIFIER: app.swiftclone.SwiftClone
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.tomac81.SwiftClone
   SwiftCloneCoreTests:
     type: bundle.unit-test
     platform: macOS

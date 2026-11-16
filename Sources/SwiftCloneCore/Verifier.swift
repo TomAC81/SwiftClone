@@ -10,11 +10,16 @@ public enum Verifier {
                               onMismatch: (String, String) -> Void) async throws -> VerificationSummary {
         var summary = VerificationSummary(mode: mode, filesChecked: 0, mismatches: 0)
         var pending = [""]
+        var root = stat()
+        let sourceDevice: dev_t? = stat(source, &root) == 0 ? root.st_dev : nil
         // Explicit stack instead of recursion: depth-independent memory.
         while let rel = pending.popLast() {
             await control.waitIfPaused()
             if control.isCancelled { throw CancellationError() }
             let srcDir = rel.isEmpty ? source : source + "/" + rel
+            // Mirror the engine: folders on another volume were not backed up.
+            var st = stat()
+            if !rel.isEmpty, stat(srcDir, &st) == 0, let sourceDevice, st.st_dev != sourceDevice { continue }
             guard let entries = try? DirectoryReader.list(srcDir) else { continue }
             for e in entries where !excluded.contains(e.name) && !BackupPlanner.isPartial(e.name) {
                 let path = rel.isEmpty ? e.name : rel + "/" + e.name
